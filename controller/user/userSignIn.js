@@ -1,5 +1,5 @@
-const bcrypt = require('bcryptjs')
-const userModel = require('../../models/userModel')
+const bcrypt = require('bcryptjs');
+const userModel = require('../../models/userModel');
 const jwt = require('jsonwebtoken');
 
 async function userSignInController(req, res) {
@@ -13,11 +13,6 @@ async function userSignInController(req, res) {
 
         if (!user) throw new Error("User not found");
 
-        // 🛠 Debugging Logs
-        console.log("🔹 User found:", user);
-        console.log("🔹 Received Password:", password);
-        console.log("🔹 Stored Password (hashed):", user.password);
-
         const checkPassword = await bcrypt.compare(password, user.password);
         console.log("🔹 Password Match:", checkPassword);
 
@@ -25,18 +20,33 @@ async function userSignInController(req, res) {
             const tokenData = { _id: user._id, email: user.email };
             const token = await jwt.sign(tokenData, process.env.TOKEN_SECRET_KEY, { expiresIn: "8h" });
 
-            res.cookie("token", token, { httpOnly: true, secure: true }).status(200).json({
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: true,
+                sameSite: "None",
+                path: "/",
+                maxAge: 8 * 60 * 60 * 1000,
+            });
+
+            return res.status(200).json({
                 message: "Login successfully",
-                data: token,
                 success: true,
                 error: false,
+                data: {
+                    token,
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    profilePic: user.profilePic || "",
+                    role: user.role || "USER",
+                },
             });
         } else {
             throw new Error("Please check Password");
         }
     } catch (err) {
         console.error("❌ Error:", err.message);
-        res.json({
+        res.status(400).json({
             message: err.message || err,
             error: true,
             success: false,
@@ -45,6 +55,7 @@ async function userSignInController(req, res) {
 }
 
 module.exports = userSignInController;
+
 
 // const bcrypt = require('bcryptjs')
 // const userModel = require('../../models/userModel')
